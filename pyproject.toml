@@ -1,0 +1,20 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = "A tool for finding profitable trades for a given BitCraft Online claim, and record the relevant info in a google docs spreadsheet."
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dotenv (>=0.9.9,<0.10.0)",
+    "requests (>=2.32.5,<3.0.0)",
+    "numpy (>=2.3.2,<3.0.0)",
+    "pandas (>=2.3.2,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
