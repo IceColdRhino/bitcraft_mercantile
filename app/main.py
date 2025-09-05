@@ -1,4 +1,6 @@
+from datetime import (datetime, timezone)
 from dotenv import load_dotenv
+import gspread
 import logging
 import numpy as np
 import os
@@ -8,7 +10,12 @@ import sys
 import time
 
 def main():
+    # Determine start time
+    t_start = datetime.now(timezone.utc)
+    logging.info(f"Started at {t_start.strftime('%Y-%m-%d %H:%M %Z')}")
+
     # Load environment variables
+    gc = gspread.oauth()
     load_dotenv()
     claim_url = os.getenv("CLAIM_URL")
     throttle_rate = os.getenv("THROTTLE_RATE")
@@ -63,7 +70,9 @@ def main():
     logging.info(f"Earliest possible completion in {np.round(total_N*throttle_rate/60,2)} [min]. (Likely longer due to processing time)")
     full_df = pd.DataFrame(data=None)
     # Iterate across all items with orders
+    # TODO: Return to normal loop instead of truncation
     for i in range(0,total_N):
+        #for i in range(0,50):
         if i%10 == 0:
             logging.info(f"{np.round(100*i/total_N,2)} % Complete: {i:,}/{total_N:,} Items")
         item = item_list[i]
@@ -285,9 +294,34 @@ def main():
     # Sort DatFrame by cargo ship profitability
     full_df = full_df.sort_values("Cargo Ship Profit per 1k Dist",ascending=False)
 
-    logging.info("Analysis complete. Beginning upload to google sheets.")
+    # Determine end time
+    t_end = datetime.now(timezone.utc)
+    t_diff = int(np.round((t_end-t_start).seconds/60))
+    logging.info(f"Analysis completed at {t_end.strftime('%Y-%m-%d %H:%M %Z')}, taking {t_diff} [min].")
 
-    full_df.to_csv("test.csv",index=False)
+    if len(full_df) > 0:
+        logging.info("Beginning upload to google sheets.")
+
+        spreadsheet = gc.open("Aztalan Mercantile")
+
+        # Updating overview info
+        claim_list = pd.unique(full_df[["Buying Claim","Selling Claim"]].values.ravel("K"))
+        claim_N = len(claim_list)
+        worksheet = spreadsheet.worksheet("Overview")
+        worksheet.update_acell("D12", f"{t_start.strftime('%Y-%m-%d %H:%M %Z')}")
+        worksheet.update_acell("G12", f"{t_diff} [min]")
+        worksheet.update_acell("D14", f"{full_df["Item"].nunique()}")
+        worksheet.update_acell("G14", f"{claim_N}")
+
+        # full_df.to_csv("test.csv",index=False)
+
+        worksheet = spreadsheet.worksheet("Profitable Trades")
+        worksheet.clear()
+        worksheet.update([full_df.columns.values.tolist()] + full_df.values.tolist())
+
+        logging.info("Upload to google sheets completed.")
+    else:
+        logging.warning("Empty dataset. Something seems to have gone wrong.")
 
 class bitjita_client():
     """
