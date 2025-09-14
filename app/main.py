@@ -19,17 +19,22 @@ def main():
     load_dotenv()
     claim_url = os.getenv("CLAIM_URL")
     throttle_rate = os.getenv("THROTTLE_RATE")
+    spreadsheet_name = os.getenv("SPREADSHEET_NAME")
 
     if claim_url:
         claim_id = claim_url.split("claims/")[1]
     else:
-        logging.error("No CLAIM_URL entry found in .env file")
+        logging.error("No CLAIM_URL entry found in .env file.")
         return
 
     if throttle_rate:
         throttle_rate = float(throttle_rate)
     else:
         logging.error("No THROTTLE_RATE entry found in .env file.")
+        return
+    
+    if not spreadsheet_name:
+        logging.error("No SPREADSHEET_NAME entry found in .env file.")
         return
     
     # Initialize Bitjita API client
@@ -299,10 +304,14 @@ def main():
     t_diff = int(np.round((t_end-t_start).seconds/60))
     logging.info(f"Analysis completed at {t_end.strftime('%Y-%m-%d %H:%M %Z')}, taking {t_diff} [min].")
 
+    # Replace any infs with nans, and then drop all nans
+    full_df = full_df.replace([np.inf, -np.inf], np.nan)
+    full_df = full_df.dropna().reset_index(drop=True)
+
     if len(full_df) > 0:
         logging.info("Beginning upload to google sheets.")
 
-        spreadsheet = gc.open("Aztalan Mercantile")
+        spreadsheet = gc.open(spreadsheet_name)
 
         # Updating overview info
         claim_list = pd.unique(full_df[["Buying Claim","Selling Claim"]].values.ravel("K"))
