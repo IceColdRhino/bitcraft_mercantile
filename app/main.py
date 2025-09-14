@@ -326,6 +326,7 @@ def main():
 
         worksheet = spreadsheet.worksheet("Profitable Trades")
         worksheet.clear()
+        worksheet.delete_rows(3,10000)
         worksheet.update([full_df.columns.values.tolist()] + full_df.values.tolist())
 
         logging.info("Upload to google sheets completed.")
